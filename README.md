@@ -1,23 +1,24 @@
-# Laravel Docker Setup (PHP 8.4 + Nginx + MySQL + phpMyAdmin)
+# 🚀 Laravel Docker Setup (PHP 8.4 + Nginx + MySQL + Redis + Queue + Mailhog)
 
-This repository provides a complete **Dockerized Laravel development environment** using:
+A complete **production-like Dockerized Laravel development environment** with:
 
-* **PHP 8.4 (FPM)**
-* **Nginx**
-* **MySQL 8**
-* **phpMyAdmin**
-* **Composer**
-
-It is designed to help you spin up a fully working Laravel app with minimal setup.
+* ⚡ PHP 8.4 (FPM)
+* 🌐 Nginx
+* 🛢️ MySQL 8
+* 🔴 Redis (Cache, Queue, Sessions)
+* 📬 Mailhog (Email testing)
+* ⚙️ Queue Worker & Scheduler
+* 🧰 phpMyAdmin
+* 📦 Composer
 
 ---
 
 # 📦 Prerequisites
 
-Make sure you have the following installed:
+Make sure you have:
 
 * Docker
-* Docker Compose (v2 recommended)
+* Docker Compose (v2+)
 * Git
 
 Check versions:
@@ -39,6 +40,8 @@ docker compose version
 ├── nginx/
 │   └── default.conf
 ├── .env
+├── app/
+├── routes/
 ├── vendor/
 ├── node_modules/
 └── ...
@@ -46,20 +49,51 @@ docker compose version
 
 ---
 
-# ⚡ Getting Started
-
-## 1. Clone the Repository
+# ⚡ Quick Start (TL;DR)
 
 ```bash
 git clone <your-repo-url>
-cd <your-project-folder>
+cd <project>
+
+cp .env.example .env
+
+docker compose up -d --build
+
+docker compose exec app php artisan key:generate
+docker compose exec app php artisan migrate
+```
+
+👉 Open: [http://localhost:8000](http://localhost:8000)
+
+---
+
+# 🧱 Services Overview
+
+| Service      | Description            |
+| ------------ | ---------------------- |
+| `app`        | Laravel (PHP-FPM)      |
+| `nginx`      | Web server             |
+| `mysql`      | Database               |
+| `redis`      | Cache, queue, sessions |
+| `queue`      | Laravel queue worker   |
+| `scheduler`  | Laravel cron scheduler |
+| `mailhog`    | Email testing          |
+| `phpmyadmin` | Database UI            |
+
+---
+
+# ⚙️ Setup Instructions
+
+## 1. Clone Repository
+
+```bash
+git clone <your-repo-url>
+cd <project>
 ```
 
 ---
 
-## 2. Create Laravel Project (if not already present)
-
-If this repo is empty (no Laravel installed yet):
+## 2. Install Laravel (if not present)
 
 ```bash
 docker run --rm -v ${PWD}:/app composer create-project laravel/laravel .
@@ -67,49 +101,55 @@ docker run --rm -v ${PWD}:/app composer create-project laravel/laravel .
 
 ---
 
-## 3. Setup Environment File
-
-Copy `.env.example` to `.env` if not already:
+## 3. Setup Environment
 
 ```bash
 cp .env.example .env
 ```
 
----
-
-## 4. Update Database Configuration
-
-Inside `.env`, update:
+### 🔧 Update `.env`
 
 ```env
+APP_NAME=Laravel
+APP_ENV=local
+APP_DEBUG=true
+APP_URL=http://localhost:8000
+
+# Database
 DB_CONNECTION=mysql
 DB_HOST=mysql
 DB_PORT=3306
 DB_DATABASE=laravel_db
 DB_USERNAME=user
 DB_PASSWORD=user123
+
+# Redis
+REDIS_HOST=redis
+
+# Queue
+QUEUE_CONNECTION=redis
+
+# Session & Cache
+SESSION_DRIVER=redis
+CACHE_STORE=redis
+
+# Mailhog
+MAIL_MAILER=smtp
+MAIL_HOST=mailhog
+MAIL_PORT=1025
 ```
 
 ---
 
-## 5. Build and Start Containers
+## 4. Build & Start
 
 ```bash
 docker compose up -d --build
 ```
 
-This will start:
-
-* Laravel App (PHP-FPM)
-* Nginx server
-* MySQL database
-* phpMyAdmin
-
 ---
 
-## 6. Install Dependencies (if needed)
-
-If vendor folder is missing:
+## 5. Install Dependencies
 
 ```bash
 docker compose exec app composer install
@@ -117,7 +157,7 @@ docker compose exec app composer install
 
 ---
 
-## 7. Generate Application Key
+## 6. Generate App Key ⚠️ IMPORTANT
 
 ```bash
 docker compose exec app php artisan key:generate
@@ -125,7 +165,7 @@ docker compose exec app php artisan key:generate
 
 ---
 
-## 8. Run Migrations
+## 7. Run Migrations
 
 ```bash
 docker compose exec app php artisan migrate
@@ -133,78 +173,116 @@ docker compose exec app php artisan migrate
 
 ---
 
-# 🌐 Access the Application
+# 🌐 Access URLs
 
-| Service     | URL                   |
-| ----------- | --------------------- |
-| Laravel App | http://localhost:8000 |
-| phpMyAdmin  | http://localhost:8080 |
+| Service     | URL                                            |
+| ----------- | ---------------------------------------------- |
+| Laravel App | [http://localhost:8000](http://localhost:8000) |
+| phpMyAdmin  | [http://localhost:8080](http://localhost:8080) |
+| Mailhog UI  | [http://localhost:8025](http://localhost:8025) |
+
+---
+
+# 🧪 Health Check Endpoint (Optional but Recommended)
+
+Add this to `routes/web.php`:
+
+```php
+Route::get('/', function () {
+    return response()->json([
+        'app' => 'Laravel running 🚀',
+        'time' => now()
+    ]);
+});
+```
+
+👉 Visit: [http://localhost:8000](http://localhost:8000)
+
+---
+
+# 🔍 Verify Services
+
+Run inside container:
+
+```bash
+docker compose exec app php artisan tinker
+```
+
+```php
+DB::connection()->getPdo();   // MySQL
+Redis::ping();                // Redis
+```
 
 ---
 
 # 🛢️ Database Access
 
-**Host:** mysql
-**Port:** 3306
-**Database:** laravel_db
-**User:** user
-**Password:** user123
-
-> ⚠️ Port 3306 is exposed only for local dev tools (e.g., MySQL Workbench)
+| Key      | Value      |
+| -------- | ---------- |
+| Host     | mysql      |
+| Port     | 3306       |
+| DB       | laravel_db |
+| User     | user       |
+| Password | user123    |
 
 ---
 
-# 🧠 How It Works
+# ⚙️ Queue & Scheduler
 
-### 🔹 App Container (PHP-FPM)
+### Queue Worker (auto-running)
 
-* Runs Laravel
-* Installs dependencies via Composer
-* Executes migrations automatically via entrypoint
+```bash
+docker compose logs -f queue
+```
 
-### 🔹 Nginx
+### Scheduler (cron simulation)
 
-* Serves Laravel from `/public`
-* Passes PHP requests to `app:9000`
+```bash
+docker compose logs -f scheduler
+```
 
-### 🔹 MySQL
+---
 
-* Stores application data
-* Uses Docker volume for persistence
+# 📬 Email Testing (Mailhog)
 
-### 🔹 phpMyAdmin
-
-* Web UI for managing MySQL
+* UI: [http://localhost:8025](http://localhost:8025)
+* All emails are captured here (no real emails sent)
 
 ---
 
 # 🔧 Useful Commands
 
-## View Logs
+## Logs
 
 ```bash
 docker compose logs -f
 ```
 
-## Access App Container
+## Access Container
 
 ```bash
 docker compose exec app bash
 ```
 
-## Run Artisan Commands
+## Artisan
 
 ```bash
 docker compose exec app php artisan <command>
 ```
 
-## Stop Containers
+## Restart
+
+```bash
+docker compose restart
+```
+
+## Stop
 
 ```bash
 docker compose down
 ```
 
-## Remove Everything (including volumes)
+## Reset (⚠️ Deletes DB)
 
 ```bash
 docker compose down -v
@@ -212,65 +290,85 @@ docker compose down -v
 
 ---
 
-# 📂 File Permissions (Handled Automatically)
+# 🧠 How It Works
 
-The entrypoint script ensures:
+### 🐘 PHP (app)
+
+* Runs Laravel via PHP-FPM
+* Handles business logic
+
+### 🌐 Nginx
+
+* Serves `/public`
+* Connects to PHP via port 9000
+
+### 🛢️ MySQL
+
+* Stores data
+* Persistent volume
+
+### 🔴 Redis
+
+* Cache
+* Sessions
+* Queue backend
+
+### ⚙️ Queue
+
+* Runs background jobs
+
+### ⏰ Scheduler
+
+* Runs Laravel cron tasks
+
+### 📬 Mailhog
+
+* Captures emails locally
+
+---
+
+# 🔐 Permissions (Auto-handled)
 
 ```bash
 storage/
 bootstrap/cache/
 ```
 
-* Correct ownership (`www-data`)
-* Proper permissions (`775`)
-
----
-
-# 🔁 Rebuild Containers
-
-If you change Dockerfile or dependencies:
-
-```bash
-docker compose up -d --build
-```
+* Owned by `www-data`
+* Permissions set to `775`
 
 ---
 
 # ⚠️ Common Issues & Fixes
 
-### 1. Permission Issues
+## ❌ APP_KEY Missing
 
 ```bash
-docker compose exec app chmod -R 775 storage bootstrap/cache
+docker compose exec app php artisan key:generate
 ```
 
 ---
 
-### 2. Composer Not Installed
+## ❌ Database Not Connecting
 
-Rebuild container:
+* Check `.env`
+* Ensure MySQL is healthy
 
 ```bash
-docker compose build --no-cache
+docker compose logs mysql
 ```
 
 ---
 
-### 3. Database Not Connecting
-
-* Ensure `DB_HOST=mysql`
-* Wait for MySQL healthcheck
-* Restart containers:
+## ❌ Redis Not Working
 
 ```bash
-docker compose restart
+docker compose logs redis
 ```
 
 ---
 
-### 4. Blank Page / 500 Error
-
-Check logs:
+## ❌ Blank Page / 500 Error
 
 ```bash
 docker compose logs app
@@ -278,51 +376,79 @@ docker compose logs app
 
 ---
 
-# 🧪 Development Tips
+## ❌ Permission Issues
 
-* Use **hot reload** by editing files locally (volume mounted)
-* No need to rebuild for code changes
-* Only rebuild when:
-
-  * Dockerfile changes
-  * PHP extensions change
+```bash
+docker compose exec app chmod -R 775 storage bootstrap/cache
+```
 
 ---
 
-# 📦 Volumes
-
-* `mysql_data` → persists database
-
----
-
-# 🛑 Security Notes
-
-* This setup is for **development only**
-* Do NOT use default credentials in production
-* Disable exposed MySQL port in production
-
----
-
-# 🙌 Contribution
-
-Feel free to fork, improve, and submit PRs!
-
----
-
-# 📜 License
-
-This project is open-source and free to use.
-
----
-
-# 💡 Summary
-
-With just a few commands:
+# 🔁 Rebuild Containers
 
 ```bash
 docker compose up -d --build
 ```
 
-You get a fully working Laravel development environment — no manual PHP, MySQL, or server setup required.
+---
+
+# 📦 Volumes
+
+| Volume     | Purpose        |
+| ---------- | -------------- |
+| mysql_data | DB persistence |
 
 ---
+
+# 🧪 Development Tips
+
+* ✅ Live reload (via volume mount)
+* ❌ No rebuild needed for code changes
+* 🔁 Rebuild only if:
+
+  * Dockerfile changes
+  * PHP extensions added
+
+---
+
+# 🛑 Security Notes
+
+⚠️ Development only
+
+* Do NOT use default passwords in production
+* Remove exposed ports in production
+* Use secrets manager in real deployments
+
+---
+
+# 🚀 Next Improvements (Optional)
+
+* Add **Xdebug for debugging**
+* Add **Laravel Horizon (queue UI)**
+* Add **Elasticsearch / Meilisearch**
+* Add **CI/CD pipeline**
+
+---
+
+# 🙌 Contribution
+
+PRs are welcome!
+
+---
+
+# 📜 License
+
+Open-source and free to use.
+
+---
+
+# 💡 Final Summary
+
+Run this:
+
+```bash
+docker compose up -d --build
+```
+
+👉 And you get a **full Laravel production-like environment locally** — including queue, cache, scheduler, and email testing.
+

@@ -210,7 +210,6 @@ docker compose exec app php artisan tinker
 
 ```php
 DB::connection()->getPdo();   // MySQL
-Redis::ping();                // Redis
 ```
 
 ---

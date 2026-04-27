@@ -2,65 +2,157 @@
 
 A **zero-setup Laravel development environment** using Docker.
 
-Just clone and run — Laravel installs automatically with MySQL, Redis, Nginx, Queue, Scheduler, and Mailhog ready out of the box.
+Just clone and run — Laravel installs automatically with MySQL, Redis, Nginx, Mailhog, and phpMyAdmin ready out of the box.
+
+Perfect for fast local Laravel development with **PHP 8.4 + MySQL 8 + Redis + Nginx**.
 
 ---
 
-## ⚡ Features
+# ⚡ Features
 
 * PHP 8.4 (FPM)
 * Nginx (fast web server)
 * MySQL 8 (database)
 * Redis (cache, queue, sessions)
-* Queue worker (auto running)
-* Scheduler (cron simulation)
 * Mailhog (email testing)
 * phpMyAdmin (database UI)
 * Xdebug (installed, disabled by default)
+* Auto Laravel installation on first run
+* Auto `.env` configuration
+* Auto database migration
+* Auto permission fixing
 
 ---
 
-## 🎯 Goal
+# 🎯 Goal
 
-No manual setup required.
+No manual Laravel setup required.
+
+Just run:
 
 ```bash
-git clone <your-repo>
-cd <project>
+git clone <your-repository>
+cd <your-project>
 docker compose up --build
 ```
 
 That’s it.
 
+Laravel installs automatically.
+
 ---
 
-## 🧠 What Happens Automatically
+# 🧠 What Happens Automatically
 
-On first run:
+On first container startup:
 
-* Laravel is installed (if not present)
-* `.env` is configured using `.env.docker`
-* Dependencies are installed
+* Laravel is installed (if not already present)
+* `.env.docker` is copied to `.env`
+* Composer dependencies are installed
 * Application key is generated
-* Database connection is verified
-* Migrations are executed
-* Permissions are fixed
+* Storage permissions are fixed
+* MySQL connection is verified
+* Database migrations are executed
+* Config cache is cleared
+
+No manual artisan commands required.
 
 ---
 
-## 🌐 Access URLs
+# 📦 Docker Services
 
-| Service    | URL                   |
-| ---------- | --------------------- |
-| Laravel    | http://localhost:8000 |
-| phpMyAdmin | http://localhost:8080 |
-| Mailhog    | http://localhost:8025 |
+This setup includes the following containers:
+
+| Service      | Container Purpose             |
+| ------------ | ----------------------------- |
+| `app`        | PHP-FPM + Laravel application |
+| `nginx`      | Web server                    |
+| `mysql`      | MySQL database                |
+| `redis`      | Redis cache / queue / session |
+| `mailhog`    | Local email testing           |
+| `phpmyadmin` | Database management UI        |
 
 ---
 
-## 🧱 Project Structure
+# 🌐 Exposed Ports
 
+## Important
+
+Your current `docker-compose.yml` uses **dynamic ports** for `nginx`, `mailhog`, and `phpMyAdmin`.
+
+That means Docker automatically assigns available ports instead of fixed ones.
+
+### Current Port Configuration
+
+```yaml
+nginx:
+  ports:
+    - "80"
+
+mailhog:
+  ports:
+    - "8025"
+
+phpmyadmin:
+  ports:
+    - "80"
 ```
+
+This means:
+
+* Laravel app → random host port mapped to container port `80`
+* phpMyAdmin → random host port mapped to container port `80`
+* Mailhog → random host port mapped to container port `8025`
+
+To check the actual assigned ports:
+
+```bash
+docker compose ps
+```
+
+Example output:
+
+```bash
+0.0.0.0:49153->80/tcp
+0.0.0.0:49154->80/tcp
+0.0.0.0:49155->8025/tcp
+```
+
+---
+
+# ✅ Recommended Fixed Ports (Best Practice)
+
+For easier local development, update your ports like this:
+
+```yaml
+nginx:
+  ports:
+    - "8000:80"
+
+mailhog:
+  ports:
+    - "8025:8025"
+
+phpmyadmin:
+  ports:
+    - "8080:80"
+```
+
+This gives you stable URLs:
+
+| Service     | URL                   |
+| ----------- | --------------------- |
+| Laravel App | http://localhost:8000 |
+| phpMyAdmin  | http://localhost:8080 |
+| Mailhog     | http://localhost:8025 |
+
+Highly recommended.
+
+---
+
+# 🧱 Project Structure
+
+```text
 .
 ├── docker-compose.yml
 ├── Dockerfile
@@ -73,100 +165,159 @@ On first run:
 
 ---
 
-## ⚙️ Environment Configuration
+# ⚙️ Environment Configuration
 
 This project uses:
 
-```
+```text
 .env.docker
 ```
 
-It is automatically copied to:
+which is automatically copied to:
 
-```
+```text
 .env
 ```
 
-on container startup.
+during container startup.
 
-You can modify `.env.docker` to customize:
+You can customize:
 
-* Database credentials
-* Redis config
-* Mail settings
-* App URL
+* database credentials
+* Redis settings
+* mail configuration
+* Laravel app URL
 
----
+by editing:
 
-## 🛢️ Database Details
-
-| Key      | Value      |
-| -------- | ---------- |
-| Host     | mysql      |
-| Port     | 3306       |
-| DB       | laravel_db |
-| User     | user       |
-| Password | user123    |
+```text
+.env.docker
+```
 
 ---
 
-## 🔴 Redis
+# 🛢️ Database Configuration
 
-Used for:
+## MySQL Container
+
+### Service Name
+
+```text
+mysql
+```
+
+### Default Credentials
+
+| Key           | Value      |
+| ------------- | ---------- |
+| Host          | mysql      |
+| Port          | 3306       |
+| Database      | laravel_db |
+| Username      | user       |
+| Password      | user123    |
+| Root Password | root       |
+
+Used automatically by Laravel.
+
+---
+
+# 🔴 Redis Configuration
+
+Redis is used for:
 
 * Cache
 * Sessions
 * Queue
+* Laravel jobs
 
----
+### Redis Host
 
-## ⚙️ Queue & Scheduler
+```text
+redis
+```
 
-These run automatically in separate containers:
+### Redis Port
 
-```bash
-docker compose logs -f queue
-docker compose logs -f scheduler
+```text
+6379
 ```
 
 ---
 
-## 📬 Mailhog (Email Testing)
+# 📬 Mailhog Configuration
 
-* SMTP: `mailhog:1025`
-* Web UI: http://localhost:8025
+Mailhog captures all outgoing emails locally.
 
-All emails are captured here.
+## SMTP Settings
+
+| Key      | Value   |
+| -------- | ------- |
+| Host     | mailhog |
+| Port     | 1025    |
+| Username | null    |
+| Password | null    |
+
+## Web UI
+
+```text
+http://localhost:8025
+```
+
+No real emails are sent.
+
+Perfect for development.
 
 ---
 
-## 🔧 Useful Commands
+# 🛠 Useful Commands
 
-### View logs
+---
+
+## View all logs
 
 ```bash
 docker compose logs -f
 ```
 
-### Access app container
+---
+
+## View specific service logs
+
+```bash
+docker compose logs -f app
+docker compose logs -f nginx
+docker compose logs -f mysql
+```
+
+---
+
+## Access Laravel app container
 
 ```bash
 docker compose exec app bash
 ```
 
-### Run artisan
+---
+
+## Run Artisan Commands
 
 ```bash
-docker compose exec app php artisan <command>
+docker compose exec app php artisan migrate
+docker compose exec app php artisan cache:clear
+docker compose exec app php artisan config:clear
 ```
 
-### Stop containers
+---
+
+## Stop all containers
 
 ```bash
 docker compose down
 ```
 
-### Reset everything (including DB)
+---
+
+## Remove everything including database volume
 
 ```bash
 docker compose down -v
@@ -174,7 +325,7 @@ docker compose down -v
 
 ---
 
-## 🔁 Rebuild Containers
+## Rebuild containers
 
 ```bash
 docker compose up -d --build
@@ -182,86 +333,162 @@ docker compose up -d --build
 
 ---
 
-## 🧪 Development Notes
+# 🧪 Development Notes
 
-* Code changes reflect instantly (volume mount)
-* No rebuild needed for PHP/Laravel changes
+* Code changes reflect instantly via Docker volumes
+* No rebuild needed for Laravel/PHP file changes
 * Rebuild only if:
 
   * Dockerfile changes
   * PHP extensions change
+  * Nginx config changes
+
+Fast local development workflow.
 
 ---
 
-## ⚠️ Important Notes
+# ⚠️ Important Notes
 
-* This setup is intended for **development only**
-* Default credentials should NOT be used in production
-* Ports are exposed for convenience
+* This setup is for **development only**
+* Never use default credentials in production
+* Ports are exposed for local convenience
+* Xdebug is installed but disabled by default
 
----
+To enable Xdebug:
 
-## 🧠 How It Works
+```ini
+xdebug.mode=debug
+```
 
-### app (PHP-FPM)
+inside:
 
-Runs Laravel and handles backend logic.
-
-### nginx
-
-Serves the application and forwards PHP requests.
-
-### mysql
-
-Persistent database with Docker volume.
-
-### redis
-
-Handles cache, sessions, and queues.
-
-### queue
-
-Processes background jobs.
-
-### scheduler
-
-Runs scheduled Laravel tasks.
-
-### mailhog
-
-Captures emails locally.
-
-### phpmyadmin
-
-Provides database UI.
+```text
+/usr/local/etc/php/conf.d/xdebug.ini
+```
 
 ---
 
-## 🚀 Future Improvements
+# 🧠 Service Breakdown
 
-* Laravel Horizon (queue dashboard)
-* Laravel Telescope (debugging)
+---
+
+## app
+
+Runs:
+
+* PHP 8.4 FPM
+* Laravel
+* Composer
+* Artisan commands
+
+This is your main application container.
+
+---
+
+## nginx
+
+Handles:
+
+* HTTP requests
+* Static files
+* PHP forwarding to FPM
+
+Acts as the frontend web server.
+
+---
+
+## mysql
+
+Persistent MySQL database with Docker volume:
+
+```text
+mysql_data
+```
+
+Your data survives container rebuilds.
+
+---
+
+## redis
+
+Handles:
+
+* caching
+* queues
+* sessions
+
+Improves Laravel performance.
+
+---
+
+## mailhog
+
+Captures emails for local development.
+
+Safe testing without sending real emails.
+
+---
+
+## phpmyadmin
+
+Provides a GUI for MySQL management.
+
+Useful for:
+
+* viewing tables
+* importing/exporting SQL
+* debugging database issues
+
+---
+
+# 🚀 Future Improvements
+
+Possible upgrades:
+
+* Laravel Horizon
+* Laravel Telescope
+* Supervisor for workers
 * HTTPS support
-* Production-ready configuration
+* Production-ready deployment setup
+* CI/CD pipeline integration
 
 ---
 
-## 🙌 Contribution
+# 🙌 Contribution
 
-Feel free to open issues or submit pull requests.
+Feel free to:
+
+* open issues
+* submit pull requests
+* improve the starter kit
+
+Contributions are welcome.
 
 ---
 
-## 📜 License
+# 📜 License
 
 Open-source and free to use.
 
+Use it however you like.
+
 ---
 
-## 💡 Summary
+# 💡 Quick Start Summary
 
 ```bash
 docker compose up -d --build
 ```
 
-You get a **fully working Laravel environment instantly**.
+You get:
+
+* Laravel
+* MySQL
+* Redis
+* Nginx
+* Mailhog
+* phpMyAdmin
+
+fully working in minutes.
+
+A complete Laravel Docker development environment 🚀
